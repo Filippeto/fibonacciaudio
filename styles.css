@@ -167,6 +167,11 @@ ul,ol{list-style:none;margin:0;padding:0}
 @keyframes speaker-outer{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.8}40%{transform:translate(-50%,-50%) scale(1.018);opacity:.95}65%{transform:translate(-50%,-50%) scale(.997);opacity:.85}}
 @keyframes speaker-cone{0%,100%{transform:scale(1);opacity:.8}40%{transform:scale(1.022);opacity:.95}65%{transform:scale(.997);opacity:.85}}
 /* Mobile: larger touch targets, readable photos and quieter motion. */
+@media(max-width:760px){
+  .features li:nth-child(3),.features li:nth-child(3)::before{clip-path:polygon(0 0,calc(100% - 24px) 0,100% 23px,100% 100%,0 100%)}
+  .features li:nth-child(4),.features li:nth-child(4)::before{clip-path:polygon(24px 0,100% 0,100% 100%,0 100%,0 23px)}
+  .features li:nth-child(6),.features li:nth-child(6)::before{clip-path:polygon(0 0,100% 0,100% calc(100% - 23px),calc(100% - 24px) 100%,0 100%)}
+}
 @media(max-width:760px){.features{grid-template-columns:repeat(3,minmax(0,1fr))}.features li{min-height:125px}}
 @media(max-width:600px){
   :root{--gutter:clamp(20px,6vw,28px)}
@@ -220,3 +225,13 @@ ul,ol{list-style:none;margin:0;padding:0}
   .overview-product img,.contact-heading .orbits,.contact-heading .orbits::before,.contact-heading .orbits::after,.contact-heading::after{animation:none!important}
   .photo-frame img,.overview-product img,.features li{transform:none!important;scale:1!important}
 }
+
+/* Real-time product viewer: fixed footprint, no autoplay, no image-frame jumps. */
+.rotation-stage{aspect-ratio:4/5;isolation:isolate;mix-blend-mode:normal;mask-image:none;position:relative}
+.rotation-stage #rotation-image{width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply;transition:opacity .55s ease}
+.speaker-canvas{position:absolute;inset:0;display:block;width:100%;height:100%;opacity:0;transition:opacity .55s ease;pointer-events:none}
+.rotation-stage[data-viewer=3d] .speaker-canvas{opacity:1}
+.rotation-stage[data-viewer=3d] #rotation-image{opacity:0}
+@media(max-width:600px){.rotation-stage{width:94%;max-width:330px}}
+
+.rotation-stage #rotation-image{mask-image:linear-gradient(to right,transparent,#000 10%,#000 90%,transparent),linear-gradient(to bottom,transparent,#000 8%,#000 85%,transparent);mask-composite:intersect}
