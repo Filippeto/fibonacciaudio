@@ -41,9 +41,10 @@
   const clampAngle = value => Math.max(0, Math.min(360, value));
   const normalize = value => ((value % 360) + 360) % 360;
   const imageCache = new Map();
-  let viewer = null, initStarted = false, fallback = false;
+  let viewer = null, initStarted = false, fallback = true;
   let targetAngle = 24, pointer = null, startX = 0, startY = 0, startAngle = 24, gesture = null;
-  let lastFallback = -1;
+  let lastFallback = -1, loadTimer = 0, renderTimer = 0, abandoned = false;
+  stage.dataset.viewer='photos';
   function frameImage(index) {
     if (!imageCache.has(index)) imageCache.set(index, new Promise(resolve=>{
       const image = new Image(); image.onload=()=>resolve(image);image.onerror=()=>resolve(null);image.src=urls[index];
@@ -62,24 +63,41 @@
     const value = Math.round(targetAngle);
     if (updateRange) range.value=String(value);
     range.setAttribute('aria-valuetext',`Rotation: ${value} degrees`);
-    if (viewer) viewer.setAngle(targetAngle, immediate);
-    else if (fallback) showFallback();
+    if (viewer) {
+      try {
+        viewer.setAngle(targetAngle, immediate);
+        clearTimeout(renderTimer);
+        renderTimer=setTimeout(()=>{
+          if(viewer && !document.hidden && Math.abs(normalize(viewer.getRenderedAngle()-targetAngle+180)-180)>2)enableFallback();
+        },1200);
+      } catch {enableFallback();}
+    } else showFallback();
   }
   function enableFallback() {
-    viewer?.dispose();viewer=null;fallback=true;stage.dataset.viewer='photos';
+    abandoned=true;clearTimeout(loadTimer);clearTimeout(renderTimer);
+    const previous=viewer;viewer=null;fallback=true;
+    try {previous?.dispose();} catch {}
+    stage.dataset.viewer='photos';
     picture.removeAttribute('aria-hidden');
+    stage.setAttribute('aria-label','Interactive speaker view');
     document.getElementById('rotation-help').textContent='Drag to explore 8 views';
     urls.forEach((_,i)=>frameImage(i));showFallback();
   }
   function loadViewer() {
     if (initStarted) return;
     initStarted=true;
+    showFallback();
+    loadTimer=setTimeout(enableFallback,6000);
     const script=document.createElement('script');
-    script.src='./assets/vendor/viewer-3d.js';script.async=true;
+    script.src='./assets/vendor/viewer-3d.js?v=6';script.async=true;
     script.onload=async()=>{
       try {
-        viewer=await window.createFibonacci3D(stage);
+        if(abandoned)return;
+        const candidate=await window.createFibonacci3D(stage);
+        if(abandoned){candidate.dispose();stage.dataset.viewer='photos';return;}
+        clearTimeout(loadTimer);viewer=candidate;fallback=false;
         viewer.setAngle(targetAngle,true);
+        stage.dataset.viewer='3d';
         picture.setAttribute('aria-hidden','true');
         stage.setAttribute('aria-label','Interactive 3D speaker view');
       } catch {enableFallback();}
@@ -96,8 +114,13 @@
   range.addEventListener('input',()=>{
     targetAngle=clampAngle(Number(range.value));syncAngle(false,true);loadViewer();
   });
-  document.getElementById('rotate-previous').addEventListener('click',()=>{targetAngle-=fallback?45:15;syncAngle();loadViewer();});
-  document.getElementById('rotate-next').addEventListener('click',()=>{targetAngle+=fallback?45:15;syncAngle();loadViewer();});
+  function stepAngle(direction){
+    const next=targetAngle+direction*(fallback?45:15);
+    targetAngle=normalize(next);
+    syncAngle(true,next<0 || next>=360);loadViewer();
+  }
+  document.getElementById('rotate-previous').addEventListener('click',()=>stepAngle(-1));
+  document.getElementById('rotate-next').addEventListener('click',()=>stepAngle(1));
   stage.addEventListener('pointerdown',event=>{
     if(pointer!==null || !event.isPrimary || (event.pointerType==='mouse' && event.button!==0))return;
     pointer=event.pointerId;startX=event.clientX;startY=event.clientY;
