@@ -6,7 +6,9 @@
   <meta name="theme-color" content="#d76216">
   <meta name="description" content="Fibonacci One. A sculptural, 3D-printed passive speaker designed and made in Germany. Explore the speaker and the complete DIY mono kit.">
   <title>Fibonacci One | Design to be seen. Built to be assembled.</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23d76216'/%3E%3Cpath d='M7 8h19v5H13v4h10v5H13v6H7z' fill='white'/%3E%3C/svg%3E">
+  <link rel="icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="apple-touch-icon" href="./favicon-180.png">
   <link rel="preload" href="./assets/fonts/graphik-light.woff" as="font" type="font/woff" crossorigin>
   <link rel="preload" href="./assets/images/hero-banner.webp" as="image" imagesrcset="./assets/images/hero-banner-640.webp 640w, ./assets/images/hero-banner-1024.webp 1024w, ./assets/images/hero-banner.webp 1686w" imagesizes="(max-width: 600px) calc(100vw - 28px), (min-width: 1680px) 1580px, 94vw" fetchpriority="high">
   <link rel="stylesheet" href="./styles.css">
@@ -40,7 +42,7 @@
         <p class="indented"><em>A 3D-printed passive speaker for desks, shelves and creative listening spaces. Designed and produced in Germany, available as a single enclosure, a DIY mono kit or a full stereo pair.</em></p>
         <a class="pill" href="#design"><span>See more</span><span class="down-arrow" aria-hidden="true">▸▸</span></a>
       </div>
-      <ol class="features" aria-label="Product features">
+      <ol id="features" class="features" aria-label="Product features">
         <li><span class="feature-number">1</span><span>3D-printed<br>speaker<br>enclosure</span></li>
         <li><span class="feature-number">2</span><span>No-solder<br>assembly</span></li>
         <li><span class="feature-number">3</span><span>Distinctive<br>sculptural<br>design</span></li>
@@ -74,7 +76,7 @@
       <div class="rotation-controls">
         <button class="rotation-step" id="rotate-previous" type="button" aria-label="Previous angle">←</button>
         <label class="sr-only" for="rotation-range">Speaker angle</label>
-        <input type="range" id="rotation-range" min="0" max="7" value="1" step="1" aria-valuetext="View 2 of 8">
+        <input type="range" id="rotation-range" min="0" max="360" value="24" step="1" aria-valuetext="Rotation: 24 degrees">
         <button class="rotation-step" id="rotate-next" type="button" aria-label="Next angle">→</button>
         <span aria-hidden="true">360°</span>
         <p id="rotation-help">Drag to rotate</p>
@@ -123,7 +125,7 @@
   <footer class="footer section-pad">
     <div class="footer-brand"><a href="#top" aria-label="Back to top"><img src="./assets/logos/fibonacci-orange.svg" width="168" height="37" alt="Fibonacci audio"></a><small>Created by Matheus Brigante Martins ©</small></div>
     <div class="footer-center"><p>Handmade and made to order in Germany.<br>Stuttgart, Deutschland.</p><div id="social-links" class="social-links" hidden></div><small>All rights reserved.</small></div>
-    <div class="footer-credit">Powered by <img src="./assets/logos/clic.svg" width="105" height="36" alt="CL!C"></div>
+    <div class="footer-credit"><img src="./assets/logos/clic.svg" width="105" height="36" alt="Powered by CL!C"></div>
   </footer>
 </body>
 </html>
