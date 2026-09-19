@@ -11,9 +11,10 @@
   <link rel="apple-touch-icon" href="./favicon-180.png">
   <link rel="preload" href="./assets/fonts/graphik-light.woff" as="font" type="font/woff" crossorigin>
   <link rel="preload" href="./assets/images/hero-banner.webp" as="image" imagesrcset="./assets/images/hero-banner-640.webp 640w, ./assets/images/hero-banner-1024.webp 1024w, ./assets/images/hero-banner.webp 1686w" imagesizes="(max-width: 600px) calc(100vw - 28px), (min-width: 1680px) 1580px, 94vw" fetchpriority="high">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles-v7.css">
+  <script src="./rotation-photos-v7.js" defer></script>
   <script src="./config.js" defer></script>
-  <script src="./script.js" defer></script>
+  <script src="./page-v7.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -76,10 +77,10 @@
       <div class="rotation-controls">
         <button class="rotation-step" id="rotate-previous" type="button" aria-label="Previous angle">←</button>
         <label class="sr-only" for="rotation-range">Speaker angle</label>
-        <input type="range" id="rotation-range" min="0" max="360" value="24" step="1" aria-valuetext="Rotation: 24 degrees">
+        <input type="range" id="rotation-range" min="0" max="7" value="1" step="1" aria-valuetext="View 2 of 8">
         <button class="rotation-step" id="rotate-next" type="button" aria-label="Next angle">→</button>
-        <span aria-hidden="true">360°</span>
-        <p id="rotation-help">Drag to rotate</p>
+        <span id="rotation-position" aria-hidden="true">2 / 8</span>
+        <p id="rotation-help">Drag to explore 8 views</p>
       </div>
       <noscript><p class="no-script">Enable JavaScript to rotate the speaker.</p></noscript>
     </section>

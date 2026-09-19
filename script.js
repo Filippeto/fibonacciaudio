@@ -36,14 +36,15 @@
   const picture = document.getElementById('rotation-image');
   const range = document.getElementById('rotation-range');
   const smallScreen = window.matchMedia('(max-width: 600px)');
-  const reduceRotation = window.matchMedia('(prefers-reduced-motion: reduce)');
   const lightFrames = smallScreen.matches && (window.devicePixelRatio || 1) < 1.6;
   const urls = Array.from({ length: 8 }, (_, i) => `./assets/rotation/${String(i + 1).padStart(2, '0')}${lightFrames ? '-480' : ''}.webp`);
+  const clampAngle = value => Math.max(0, Math.min(360, value));
   const normalize = value => ((value % 360) + 360) % 360;
   const imageCache = new Map();
-  let viewer = null, initStarted = false, fallback = false;
+  let viewer = null, initStarted = false, fallback = true;
   let targetAngle = 24, pointer = null, startX = 0, startY = 0, startAngle = 24, gesture = null;
-  let lastX = 0, lastTime = 0, velocity = 0, lastFallback = -1, fade = null;
+  let lastFallback = -1, loadTimer = 0, renderTimer = 0, abandoned = false;
+  stage.dataset.viewer='photos';
   function frameImage(index) {
     if (!imageCache.has(index)) imageCache.set(index, new Promise(resolve=>{
       const image = new Image(); image.onload=()=>resolve(image);image.onerror=()=>resolve(null);image.src=urls[index];
@@ -56,30 +57,47 @@
     if (!image || frame !== Math.round(normalize(targetAngle)/45)%8 || lastFallback === frame) return;
     lastFallback=frame;
     picture.removeAttribute('srcset');picture.src=urls[frame];picture.alt=`Fibonacci One, view ${frame+1} of 8`;
-    if (!reduceRotation.matches) {fade?.cancel();fade=picture.animate([{opacity:.78},{opacity:1}],{duration:160,easing:'ease-out'});}
   }
-  function syncAngle(updateRange=true) {
-    const value = Math.round(normalize(targetAngle));
+  function syncAngle(updateRange=true, immediate=false) {
+    targetAngle = clampAngle(targetAngle);
+    const value = Math.round(targetAngle);
     if (updateRange) range.value=String(value);
     range.setAttribute('aria-valuetext',`Rotation: ${value} degrees`);
-    if (viewer) viewer.setAngle(targetAngle);
-    else if (fallback) showFallback();
+    if (viewer) {
+      try {
+        viewer.setAngle(targetAngle, immediate);
+        clearTimeout(renderTimer);
+        renderTimer=setTimeout(()=>{
+          if(viewer && !document.hidden && Math.abs(normalize(viewer.getRenderedAngle()-targetAngle+180)-180)>2)enableFallback();
+        },1200);
+      } catch {enableFallback();}
+    } else showFallback();
   }
   function enableFallback() {
-    viewer?.dispose();viewer=null;fallback=true;stage.dataset.viewer='photos';
+    abandoned=true;clearTimeout(loadTimer);clearTimeout(renderTimer);
+    const previous=viewer;viewer=null;fallback=true;
+    try {previous?.dispose();} catch {}
+    stage.dataset.viewer='photos';
     picture.removeAttribute('aria-hidden');
+    stage.setAttribute('aria-label','Interactive speaker view');
     document.getElementById('rotation-help').textContent='Drag to explore 8 views';
     urls.forEach((_,i)=>frameImage(i));showFallback();
   }
   function loadViewer() {
     if (initStarted) return;
     initStarted=true;
+    showFallback();
+    loadTimer=setTimeout(enableFallback,6000);
     const script=document.createElement('script');
-    script.src='./assets/vendor/viewer-3d.js';script.async=true;
+    script.src='./assets/vendor/viewer-3d.js?v=6';script.async=true;
     script.onload=async()=>{
       try {
-        viewer=await window.createFibonacci3D(stage);
+        if(abandoned)return;
+        const candidate=await window.createFibonacci3D(stage);
+        if(abandoned){candidate.dispose();stage.dataset.viewer='photos';return;}
+        clearTimeout(loadTimer);viewer=candidate;fallback=false;
         viewer.setAngle(targetAngle,true);
+        stage.dataset.viewer='3d';
         picture.setAttribute('aria-hidden','true');
         stage.setAttribute('aria-label','Interactive 3D speaker view');
       } catch {enableFallback();}
@@ -94,39 +112,50 @@
   } else loadViewer();
   stage.addEventListener('viewer-lost',enableFallback);
   range.addEventListener('input',()=>{
-    targetAngle=Number(range.value);syncAngle(false);loadViewer();
+    targetAngle=clampAngle(Number(range.value));syncAngle(false,true);loadViewer();
   });
-  document.getElementById('rotate-previous').addEventListener('click',()=>{targetAngle-=fallback?45:15;syncAngle();loadViewer();});
-  document.getElementById('rotate-next').addEventListener('click',()=>{targetAngle+=fallback?45:15;syncAngle();loadViewer();});
+  function stepAngle(direction){
+    const next=targetAngle+direction*(fallback?45:15);
+    targetAngle=normalize(next);
+    syncAngle(true,next<0 || next>=360);loadViewer();
+  }
+  document.getElementById('rotate-previous').addEventListener('click',()=>stepAngle(-1));
+  document.getElementById('rotate-next').addEventListener('click',()=>stepAngle(1));
   stage.addEventListener('pointerdown',event=>{
-    if(!event.isPrimary || (event.pointerType==='mouse' && event.button!==0))return;
-    pointer=event.pointerId;startX=lastX=event.clientX;startY=event.clientY;
-    startAngle=targetAngle=viewer ? viewer.getAngle() : targetAngle;
-    velocity=0;lastTime=performance.now();gesture=null;
-    stage.setPointerCapture(pointer);loadViewer();
+    if(pointer!==null || !event.isPrimary || (event.pointerType==='mouse' && event.button!==0))return;
+    pointer=event.pointerId;startX=event.clientX;startY=event.clientY;
+    startAngle=targetAngle=clampAngle(viewer ? viewer.getAngle() : targetAngle);
+    syncAngle(true,true);gesture=null;
+    loadViewer();
   });
   stage.addEventListener('pointermove',event=>{
     if(event.pointerId!==pointer)return;
     const dx=event.clientX-startX,dy=event.clientY-startY;
-    if(!gesture && Math.max(Math.abs(dx),Math.abs(dy))>8)gesture=Math.abs(dx)>Math.abs(dy)?'rotate':'scroll';
+    if(!gesture && Math.max(Math.abs(dx),Math.abs(dy))>8){
+      gesture=Math.abs(dx)>Math.abs(dy)?'rotate':'scroll';
+      if(gesture==='rotate')stage.setPointerCapture(pointer);
+    }
     if(gesture!=='rotate')return;
     stage.classList.add('is-dragging');
-    const now=performance.now(),sensitivity=180/Math.max(stage.clientWidth,260);
-    const elapsed=Math.max(8,now-lastTime);
-    velocity=.65*velocity+.35*(event.clientX-lastX)*sensitivity/elapsed;
-    lastX=event.clientX;lastTime=now;
-    targetAngle=startAngle+dx*sensitivity;syncAngle();
+    const sensitivity=180/Math.max(stage.clientWidth,260);
+    const nextAngle=startAngle+dx*sensitivity;
+    targetAngle=clampAngle(nextAngle);
+    // Reset at each end so reversing the finger responds immediately.
+    if(nextAngle!==targetAngle){startX=event.clientX;startAngle=targetAngle;}
+    syncAngle(true,true);
   });
   function stopDragging(event) {
     if(event.pointerId!==pointer)return;
-    if(gesture==='rotate' && event.type==='pointerup' && !reduceRotation.matches && performance.now()-lastTime<90){
-      targetAngle+=Math.max(-12,Math.min(12,velocity*60));syncAngle();
-    }
-    pointer=null;gesture=null;velocity=0;stage.classList.remove('is-dragging');
+    const captured=pointer;
+    pointer=null;gesture=null;stage.classList.remove('is-dragging');
+    if(stage.hasPointerCapture(captured))stage.releasePointerCapture(captured);
   }
   stage.addEventListener('pointerup',stopDragging);
   stage.addEventListener('pointercancel',stopDragging);
   stage.addEventListener('lostpointercapture',stopDragging);
+  stage.addEventListener('pointerleave',event=>{
+    if(gesture!=='rotate')stopDragging(event);
+  });
 
   // Content stays visible without JavaScript or animation support.
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
